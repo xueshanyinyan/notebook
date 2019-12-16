@@ -1,0 +1,59 @@
+1.下载 kafka-manager源码
+	下载路径： https://github.com/yahoo/kafka-manager/releases
+	下载版本： 2.0.0.2
+
+
+2.安装sbt
+	1)yum安装sbt，root用户
+	|--------------------------------------------------------------------------------
+	|curl https://bintray.com/sbt/rpm/rpm > bintray-sbt-rpm.repo
+	|mv bintray-sbt-rpm.repo /etc/yum.repos.d/
+	|yum install sbt
+	|--------------------------------------------------------------------------------
+	
+	2)修改仓库地址，在admin用户目录下创建 vi ~/.sbt/repositories
+	####################################
+	#坑：每一行的空格全部去掉，一个不留#
+	####################################
+	|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+	|[repositories]                                                                                                                                                                                 |
+	|local                                                                                                                                                                                          |
+	|aliyun:https://maven.aliyun.com/nexus/content/groups/public                                                                                                                                    |
+	|typesafe:http://repo.typesafe.com/typesafe/ivy-releases/,[organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],bootOnly         |
+	|sonatype-oss-releases                                                                                                                                                                          |
+	|maven-central                                                                                                                                                                                  |
+	|sonatype-oss-snapshots                                                                                                                                                                         |
+	|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+	3)检查sbt是否安装成功，（比较慢）
+		sbt -version
+
+
+3.sbt编译打包，得到安装包
+	./sbt clean dist
+	kafka-manager-2.0.0.2/target/universal/kafka-manager-2.0.0.2.zip
+
+
+4.安装：解压安装包
+	unzip kafka-manager-2.0.0.2.zip
+
+
+5.更改配置：修改kafka-manager.zkhosts列表为自己的zk节点
+	vim kafka-manager-2.0.0.2/conf/application.conf
+	|----------------------------------------------------------------------------------------|
+	|#kafka-manager.zkhosts="kafka-manager-zookeeper:2181"									 |
+	|kafka-manager.zkhosts="192.168.3.155:12181,192.168.3.155:12182,192.168.3.155:12183"	 |	
+	|----------------------------------------------------------------------------------------|
+
+
+6.启动服务
+	bin/kafka-manager 默认的端口是9000
+	-Dhttp.port，指定端口; 
+	-Dconfig.file=conf/application.conf，指定配置文件
+	启动命令：	nohup bin/kafka-manager -Dconfig.file=conf/application.conf -Dhttp.port=8080 &
+	检查是否启动： 浏览器打开 http://192.168.3.154:8080/
+
+
+7. kafka-manager配置
+   新建Cluster ：为集群起个名字，配置kafka的ZK，选择最接近的Kafka版本
+	
