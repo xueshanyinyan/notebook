@@ -24,3 +24,16 @@ b) 实现灵活的消息处理
    普通的系统在实现持久化时可能会先尽量使用内存，当内存资源耗尽时，再一次性地把数据持久化；
    而kafka则相反，所有数据都会立即被写入文件系统的持久化日志中，之后kafka服务器才会返回结果给客户端通知它们消息已被成功写入。
    这样做既实时保存了数据，有减少了kafka程序对于内存的消耗，从而将节省出的内存留给页缓存使用，更进一步地提升了整体性能。
+
+6.kafka的为什么推荐Linux操作系统？
+a) 当前Linux服务器数量最多
+b) I/O模型的使用
+	kafka的clients在设计底层网络库时采用Java的Selector机制，在Linux上的实现机制是epoll,
+	而windows平台上，Java NIO的Selector机制底层是select模型而非异步IO，只有Java NIO2才使用异步IO。
+	通常认为epoll比select模型高级，epoll就是加强版的select，取消轮询机制，取而代之回调机制。
+	当socket较多时可以避免很多无意义的CPU时间浪费，理论上epoll对socket数无限制。
+c) 数据网络传输效率
+	kafka这种应用必然需要大量地通过网络与磁盘进行数据传输，而大部分这样的操作都是通过Java的FileChannel.transferTo
+	方法实现的。在Linux平台上该方法底层回调用sendfile系统调用，即采用了Linux提供的零拷贝技术。
+	而windows平台提供了TransmitFile函数来支持零拷贝技术，但是直到Java 8u60版本Window平台才正式让FileChannel的transferTo方法调用函数。
+	
