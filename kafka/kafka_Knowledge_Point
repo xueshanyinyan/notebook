@@ -38,8 +38,16 @@ c) 数据网络传输效率
 	而windows平台提供了TransmitFile函数来支持零拷贝技术，但是直到Java 8u60版本Window平台才正式让FileChannel的transferTo方法调用函数。
 	
 7.Java版本producer的工作原理是什么？
-首先，producer使用一个线程（用户主线程，也就是用户启动producer的线程）将待发送的消息封装进一个ProducerRecord类实例，
-然后，将其序列化之后发送给partitioner，
-然后，由partitioner确定了目标分区后一同发送到位于producer程序中的一块内存缓冲区中。
+    首先，producer使用一个线程（用户主线程，也就是用户启动producer的线程）将待发送的消息封装进一个ProducerRecord类实例，
+    然后，将其序列化之后发送给partitioner，
+    然后，由partitioner确定了目标分区后一同发送到位于producer程序中的一块内存缓冲区中。
 而producer的另一个工作线程（I/O发送线程，也称Sender线程）则负责实时的从该缓冲区提取出准备就绪的消息封装进一个批次（batch）,统一发送给对应的broker。
+
+8.为什么producer使用结束时要做close()操作？
+    producer程序启动后，用户主线程就可以将待发送消息封装、序列化、发送到producer程序中的一块内存缓冲区中，
+    同时也会创建一个后台线程即Sender线程从消息缓冲池中读取消息封装进一个批次中发送给broker。
+    当主线程快速地停掉时，就可能会发生数据丢失的情况，因为Sender线程还没来得及把消息缓冲池中的消息全发出去。
+    而close()就可以在给定的时间（默认很长）里继续发送消息给broker。
+    Spring整合的kafka的API，也是在容器销毁实例时调用producer的close()方法，当然在每次producer.send()后也会关闭，
+    但close()方法是空方法，因为producer是单例的，要复用这个producer当然不能真的关闭。
 	
