@@ -37,3 +37,9 @@ c) 数据网络传输效率
 	方法实现的。在Linux平台上该方法底层回调用sendfile系统调用，即采用了Linux提供的零拷贝技术。
 	而windows平台提供了TransmitFile函数来支持零拷贝技术，但是直到Java 8u60版本Window平台才正式让FileChannel的transferTo方法调用函数。
 	
+7.Java版本producer的工作原理是什么？
+首先，producer使用一个线程（用户主线程，也就是用户启动producer的线程）将待发送的消息封装进一个ProducerRecord类实例，
+然后，将其序列化之后发送给partitioner，
+然后，由partitioner确定了目标分区后一同发送到位于producer程序中的一块内存缓冲区中。
+而producer的另一个工作线程（I/O发送线程，也称Sender线程）则负责实时的从该缓冲区提取出准备就绪的消息封装进一个批次（batch）,统一发送给对应的broker。
+	
