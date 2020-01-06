@@ -50,4 +50,23 @@ c) 数据网络传输效率
     而close()就可以在给定的时间（默认很长）里继续发送消息给broker。
     Spring整合的kafka的API，也是在容器销毁实例时调用producer的close()方法，当然在每次producer.send()后也会关闭，
     但close()方法是空方法，因为producer是单例的，要复用这个producer当然不能真的关闭。
+    
+9.batch.size参数怎么理解？
+   batch.size是producer最重要的参数之一！
+   batch.size对于调优producer吞吐量和延时性能指标都有着非常重要的作用。
+   producer会将发往同一分区的多条消息封装进一个batch中，当batch满了的时候producer会发batch中的所有消息。
+   不过，producer并不总是等待batch满了才发送消息，
+   超过消息发送延迟时间(linger.ms参数控制)producer就发送该batch，即使batch还有很多空闲空间。
+   显然，batch的大小就显得非常重要。
+   通常来说，一个小的batch中包含的消息数很少，因而一次发送请求能够写入的消息数也很少，producer的吞吐量就会很低。
+   但若一个batch非常巨大，那么会给内存使用带来极大的压力，因为不管能否被填满，producer都会为该batch分配固定大小的内存。
+   当分区较多时，内存会被迅速消耗，会阻塞producer继续将消息写入缓存且batch内存使用率也不高。
+   因此，batch.size参数的设置其实是一种时间与空间权衡的体现。
+
+
+10.linger.ms参数怎么理解？
+    linger.ms参数就是控制消息发送延时行为的。该参数默认值是0，表示消息需要被立即发送，无须关心batch是否已被填满，
+    大多数情况下这是合理的，毕竟我们总是希望消息被尽可能快地发送。
+    不过这样做会拉低producer吞吐量，毕竟producer的每次发送请求中包含的消息数越多，producer就越能将发送请求的开销
+    摊薄到更多的消息上，从而提升吞吐量。
 	
