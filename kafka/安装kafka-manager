@@ -50,7 +50,7 @@
 	bin/kafka-manager 默认的端口是9000
 	-Dhttp.port，指定端口; 
 	-Dconfig.file=conf/application.conf，指定配置文件
-	启动命令：	nohup bin/kafka-manager -Dconfig.file=conf/application.conf -Dhttp.port=8080 &
+	启动命令：	nohup bin/kafka-manager -Dconfig.file=conf/application.conf -Dhttp.port=8080 &>/dev/null &
 	检查是否启动： 浏览器打开 http://192.168.3.154:8080/
 
 
