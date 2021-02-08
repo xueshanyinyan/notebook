@@ -1,0 +1,174 @@
+一、Hadoop 集群
+	1、下载安装包
+		Cloudera CDH 发行版本从2021年1月31日开始全面收费，使用 Apache 发行版本，下载地址：
+		https://archive.apache.org/dist/hadoop/common/stable/hadoop-3.3.0.tar.gz
+
+	2、安装
+		解压即安装
+		tar -zxvf hadoop-3.3.0.tar.gz
+
+	3、设置 JAVA 安装目录
+		vim etc/hadoop/hadoop-env.sh
+			export JAVA_HOME=/home/hadoop/app/jdk1.8.0_65
+
+	4、On YARN 单点伪分布式运行配置
+		1） etc/hadoop/core-site.xml:
+				<configuration>
+					<property>
+						<name>fs.defaultFS</name>
+						<value>hdfs://node001:9000</value>
+					</property>
+				</configuration>
+			说明：
+				fs.defaultFS ：开启HA时指定文件系统的 NameNode节点的主机名、接收DataNode发送心跳的端口
+
+		2） etc/hadoop/hdfs-site.xml:
+				<configuration>
+				  <property>
+					 <name>dfs.namenode.name.dir</name>
+					 <value>/home/hadoop/app/hadoop-2.6.0-cdh5.7.0/dfs/name</value>
+				  </property>
+				  <property>
+					 <name>dfs.datanode.data.dir</name>
+					 <value>/home/hadoop/app/hadoop-2.6.0-cdh5.7.0/dfs/data</value>
+				  </property>
+				  <property>
+					<name>dfs.replication</name>
+					<value>1</value>
+				  </property>
+				</configuration>
+			说明：
+				dfs.namenode.name.dir ：存放NameNode节点Metadata元数据的目录 
+				dfs.datanode.data.dir ：存放HDFS文件系统数据文件的目录
+				
+		3） etc/hadoop/mapred-site.xml:
+				<configuration>
+				  <property> 
+					<name>mapreduce.framework.name</name>
+					<value>yarn</value>
+				  </property>
+				</configuration>
+			说明：
+				mapreduce.framework.name ：指的是使用yarn运行mapreduce程序
+
+		4） etc/hadoop/yarn-site.xml:
+				<configuration>
+				  <property>
+					<name>yarn.nodemanager.aux-services</name>
+					<value>mapreduce_shuffle</value>
+				  </property>
+				</configuration>
+			说明：
+				yarn.nodemanager.aux-services ：NodeManager上运行的附属服务。只有配置成 mapreduce_shuffle，才可运行MapReduce程序
+
+	5、启动关闭
+		1） 格式化文件系统（只做一次）
+				bin/hdfs namenode -format
+		2） 启动hdfs分布式文件系统的 NameNode、DataNode 进程
+				sbin/start-dfs.sh
+		3） 访问 NameNode 的 Web UI 
+				http://node001:9870/ >>>> http://192.168.3.154:9870
+		4） 启动YARN资源管理器系统的 ResourceManager、NodeManager 进程
+				sbin/start-yarn.sh
+		5） 访问 ResourceManager 的 Web UI
+				http://localhost:8088/ >>>> http://192.168.3.154:8088/
+		6） 关闭YARN资源管理器系统的 ResourceManager、NodeManager 进程
+				sbin/stop-yarn.sh
+		7） 关闭hdfs分布式文件系统的 NameNode、DataNode 进程
+				sbin/stop-dfs.sh
+		
+二、Flink On YARN
+	1、下载安装包
+		https://archive.apache.org/dist/flink/flink-1.11.2/flink-1.11.2-bin-scala_2.11.tgz
+
+	2、安装
+		解压即安装，解压到指定目录下
+		tar -zxvf flink-1.11.2-bin-scala_2.11.tgz -C ../app/
+		
+	3、环境变量
+		vim ~/.bash_profile
+			JAVA_HOME=/home/hadoop/app/jdk1.8.0_65
+			MAVEN_HOME=/home/hadoop/app/apache-maven-3.3.9
+			HADOOP_HOME=/home/hadoop/app/hadoop-2.6.0-cdh5.7.0
+
+			export CLASSPATH=.:$JAVA_HOME/lib/tools.jar:$JAVA_HOME/jre/lib:$JAVA_HOME/lib:$CLASSPATH
+			export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$MAVEN_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+			export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
+			export HADOOP_CLASSPATH=`hadoop classpath`
+	
+	4、基于Session Mode部署
+			./bin/yarn-session.sh -d
+		yarn-session.sh 参数说明：
+			 -D <arg>                        Dynamic properties
+			 -d,--detached                   Start detached
+			 -jm,--jobManagerMemory <arg>    Memory for JobManager Container with optional unit (default: MB)
+			 -nm,--name                      Set a custom name for the application on YARN
+			 -at,--applicationType           Set a custom application type on YARN
+			 -q,--query                      Display available YARN resources (memory, cores)
+			 -qu,--queue <arg>               Specify YARN queue.
+			 -s,--slots <arg>                Number of slots per TaskManager
+			 -tm,--taskManagerMemory <arg>   Memory per TaskManager Container with optional unit (default: MB)
+			 -z,--zookeeperNamespace <arg>   Namespace to create the Zookeeper sub-paths for HA mode	
+
+	5、提交 job
+		》》CLI ：./bin/flink run examples/batch/WordCount.jar
+		》》Web UI ：可进行作业提交
+
+	6、停止集群服务
+		》》Yarn Kill命令
+			# 找到作业对应的ApplicationID
+			$ yarn application -list
+			# 指定Kill命令
+			$ yarn application -kill application_1612763837211_0001
+		》》Flink stop 命令
+			echo "stop" | ./bin/yarn-session.sh -id application_1612763837211_0001
+
+三、资源配置（以指定时间画像作业为例说明）
+	1、系统默认配置（也可通过命令行参数指定，参考 yarn-session.sh参数说明）：
+		1） TaskManager 资源配置： 	flink-conf.yaml
+				jobmanager.memory.process.size: 1024m
+				taskmanager.memory.process.size: 1024m
+				taskmanager.numberOfTaskSlots: 11
+			指定时间画像作业算子中最高并行度为10，则作业至少需要10个 TaskManager
+
+		2） container 资源配置： 	yarn-site.xml
+				<property>
+					<name>yarn.scheduler.maximum-allocation-mb</name>
+					<value>11264</value>
+				</property>
+				<property>
+					<name>yarn.scheduler.maximum-allocation-vcores</name>
+					<value>11</value>
+				</property>
+				<property>
+					<name>yarn.nodemanager.resource.memory-mb</name>
+					<value>24576</value>
+				</property>
+				<property>
+					<name>yarn.nodemanager.resource.cpu-vcores</name>
+					<value>16</value>
+				</property>
+			
+			YARN 为 Flink 分配 Contanier，Container 大小必须是 yarn.scheduler.minimum-allocation-mb 的整数倍，yarn.scheduler.minimum-allocation-mb 默认1024m。
+			Flink Session 时 >> YARN 为作业的 JM 提供 Container(cpu-vcores=1，allocation-mb=1024m)，
+			Flink 作业提交时 >> YARN 为作业的 TM 提供 Container(cpu-vcores=11，allocation-mb=1024m * 11=11264m);
+			
+			参数说明：
+			yarn.scheduler.minimum-allocation-mb/yarn.scheduler.maximum-allocation-mb : 单个 Container 可申请的最小/最大内存，默认1024/8192
+			yarn.scheduler.minimum-allocation-vcores/yarn.scheduler.maximum-allocation-vcores : 单个 Container 可申请的最小/最大虚拟CPU个数，默认1/32
+			yarn.nodemanager.resource.memory-mb : NodeManager总的可用物理内存
+			yarn.nodemanager.resource.cpu-vcores : NodeManager总的可用虚拟CPU个数
+
+	2、命令行参数指定 TaskManager 配置：
+		./bin/yarn-session.sh -d -jm 1024 -tm 1024 -s 11
+	
+四、Hadoop YARN配置参数 yarn-site.xml 说明
+	参数 >> https://blog.csdn.net/w892824196/article/details/86703074
+
+五、参考资料
+https://hadoop.apache.org/docs/r3.3.0/hadoop-project-dist/hadoop-common/SingleCluster.html#YARN_on_a_Single_Node
+https://ci.apache.org/projects/flink/flink-docs-release-1.11/ops/deployment/yarn_setup.html
+
+		
+	
+	
